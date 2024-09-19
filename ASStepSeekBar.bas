@@ -14,6 +14,17 @@ V1.00
 	-Release
 V1.01
 	-minor adjustments
+	-Base_Resize is public now
+V1.02
+	-Add get StepIndex
+V1.03
+	-Add Clear - Clear all steps
+	-Hitbox improved - you can now simply tap on the line and the item that is closer to it will be selected
+V1.04
+	-BugFix
+V1.05
+	-BugFixes on the vertical seekbar
+	-Add AddStep2 with ReachedColor and UnreachedColor parameter
 #End If
 #DesignerProperty: Key: ReachedLineColor, DisplayName: Reached Line Color, FieldType: Color, DefaultValue: 0xFFFFFFFF
 #DesignerProperty: Key: UnreachedLineColor, DisplayName: Unreached Line Color, FieldType: Color, DefaultValue: 0x98FFFFFF
@@ -22,7 +33,7 @@ V1.01
 #Event: TouchStateChanged (Pressed As Boolean)
 
 Sub Class_Globals
-	Type ASStepSeekBar_Step(Value As Object,Color As Int)
+	Type ASStepSeekBar_Step(Value As Object,ReachedColor As Int, UnreachedColor As Int)
 	
 	Private mEventName As String 'ignore
 	Private mCallBack As Object 'ignore
@@ -42,6 +53,7 @@ Sub Class_Globals
 	Private size As Int
 	Private lst_Sections As List
 	Private lst_X,lst_Y As List
+	Private m_Index As Int = 0
 End Sub
 
 Public Sub Initialize (Callback As Object, EventName As String)
@@ -66,7 +78,7 @@ Public Sub DesignerCreateView (Base As Object, Lbl As Label, Props As Map)
 	#End If
 End Sub
 
-Private Sub Base_Resize (Width As Double, Height As Double)
+Public Sub Base_Resize (Width As Double, Height As Double)
  	cvs.Resize(Width, Height)
 	TouchPanel.SetLayoutAnimated(0, 0, 0, Width, Height)
 	Vertical = mBase.Height > mBase.Width
@@ -76,7 +88,7 @@ End Sub
 
 'Redraws the control
 Public Sub Update
-	
+	size = Max(mBase.Height, mBase.Width) - 2 * Radius2
 	cvs.ClearRect(cvs.TargetRect)
 	If size > 0 Then
 		If Vertical = False Then
@@ -100,7 +112,13 @@ Public Sub Update
 					newx = (tmp_width/(lst_Sections.Size -1)) * i + Radius2
 				End If
 				Dim Section As ASStepSeekBar_Step = lst_Sections.Get(i)
-				cvs.DrawCircle(newx,mBase.Height/2,Radius1,Section.Color,True,0)'Radius2
+				
+				If i > m_Index Then					
+					cvs.DrawCircle(newx,mBase.Height/2,Radius1,Section.UnreachedColor,True,0)
+				Else
+					cvs.DrawCircle(newx,mBase.Height/2,Radius1,Section.ReachedColor,True,0)
+				End If
+				
 				lst_X.Add(newx)
 			Next
 			'****
@@ -125,14 +143,19 @@ Public Sub Update
 				
 				Dim newy As Float = 0
 				If i = 0 Then
-					newy = Radius2
-				Else if i = (lst_Sections.Size -1) Then
 					newy = tmp_height + Radius2
+				Else if i = (lst_Sections.Size -1) Then
+					newy = Radius2
 				Else
-					newy = (tmp_height/(lst_Sections.Size -1)) * i + Radius2
+					newy = mBase.Height - (tmp_height/(lst_Sections.Size -1)) * i + Radius2
 				End If
 				Dim Section As ASStepSeekBar_Step = lst_Sections.Get(i)
-				cvs.DrawCircle(mBase.Width/2,newy,Radius1,Section.Color,True,0)'Radius2
+				
+				If i > m_Index Then
+					cvs.DrawCircle(mBase.Width/2,newy,Radius1,Section.UnreachedColor,True,0)
+				Else
+					cvs.DrawCircle(mBase.Width/2,newy,Radius1,Section.ReachedColor,True,0)
+				End If
 				lst_Y.Add(newy)
 			Next
 			'****
@@ -173,19 +196,33 @@ Private Sub TouchPanel_Touch (Action As Int, X As Float, Y As Float)
 	Else If Action = TouchPanel.TOUCH_ACTION_UP Then
 		Pressed = False
 		If Vertical = False Then
+			Dim ThisIndex As Int = 0
+			Dim ItemWidth As Float = (mBase.Width/lst_X.Size) + Radius2*2
 			For i = 0 To lst_X.Size -1
-				If x > (lst_X.Get(i) - Radius2) And x < (lst_X.Get(i) + Radius2) Then
-					SetValueBasedOnTouch(lst_X.Get(i) , Y)
+				If Round(x) >= Round((lst_X.Get(i) - (ItemWidth/2))) And Round(x) <= Round((lst_X.Get(i) + (ItemWidth/2))) Then
+					ThisIndex = i
 					Exit
 				End If
+'				If x > (lst_X.Get(i) - Radius2) And x < (lst_X.Get(i) + Radius2) Then
+'					SetValueBasedOnTouch(lst_X.Get(i) , Y)
+'					Exit
+'				End If
 			Next
+			SetValueBasedOnTouch(lst_X.Get(ThisIndex) , Y)
 		Else
+			Dim ThisIndex As Int = 0
+			Dim ItemHeight As Float = (mBase.Height/lst_Y.Size) + Radius2*2
 			For i = 0 To lst_Y.Size -1
-				If y > (lst_Y.Get(i) - Radius2) And y < (lst_Y.Get(i) + Radius2) Then
-					SetValueBasedOnTouch(x , lst_Y.Get(i))
+				If Round(y) >= Round((lst_Y.Get(i) - (ItemHeight/2))) And Round(y) <= Round((lst_Y.Get(i) + (ItemHeight/2))) Then
+					ThisIndex = i
 					Exit
 				End If
+'				If y > (lst_Y.Get(i) - Radius2) And y < (lst_Y.Get(i) + Radius2) Then
+'					SetValueBasedOnTouch(x , Y)'lst_Y.Get(i))
+'					Exit
+'				End If
 			Next
+			SetValueBasedOnTouch(x , lst_Y.Get(ThisIndex))
 		End If
 		RaiseTouchStateEvent
 	End If
@@ -213,6 +250,7 @@ Private Sub SetValueBasedOnTouch(x As Int, y As Int)
 		If Vertical = False Then
 			For i = 0 To lst_X.Size -1
 				If x > (lst_X.Get(i) - Radius2) And x < (lst_X.Get(i) + Radius2) Then
+					m_Index = i
 					If xui.SubExists(mCallBack, mEventName & "_ValueChanged", 2) Then
 						Dim section As ASStepSeekBar_Step = lst_Sections.Get(i)
 						CallSubDelayed3(mCallBack, mEventName & "_ValueChanged", i,section.Value)
@@ -223,6 +261,7 @@ Private Sub SetValueBasedOnTouch(x As Int, y As Int)
 		Else
 			For i = 0 To lst_Y.Size -1
 				If y > (lst_Y.Get(i) - Radius2) And y < (lst_Y.Get(i) + Radius2) Then
+					m_Index = i
 					If xui.SubExists(mCallBack, mEventName & "_ValueChanged", 2) Then
 						Dim section As ASStepSeekBar_Step = lst_Sections.Get(i)
 						CallSubDelayed3(mCallBack, mEventName & "_ValueChanged", i,section.Value)
@@ -243,6 +282,12 @@ Public Sub setStepIndex(Index As Int)
 	End If
 	Update
 End Sub
+
+Public Sub getStepIndex As Int
+	Return m_Index
+End Sub
+
+
 'Gets the count of steps
 Public Sub getSize As Int
 	Return lst_Sections.Size
@@ -252,19 +297,27 @@ Public Sub GetStepValue(Index As Int) As Object
 	Return lst_Sections.Get(Index).As(ASStepSeekBar_Step).Value
 End Sub
 
-'Public Sub getValue As Int
-'	Return mValue
-'End Sub
-
 Public Sub AddStep(Color As Int,Value As Object)
-	lst_Sections.Add(CreateASStepSeekBar_Step(Value,Color))
+	lst_Sections.Add(CreateASStepSeekBar_Step(Value,Color,Color))
 	Update
 End Sub
 
-Public Sub CreateASStepSeekBar_Step (Value As Object, Color As Int) As ASStepSeekBar_Step
+Public Sub AddStep2(ReachedColor As Int, UnreachedColor As Int,Value As Object)
+	lst_Sections.Add(CreateASStepSeekBar_Step(Value,ReachedColor,UnreachedColor))
+	Update
+End Sub
+
+Public Sub Clear
+	lst_Sections.Clear
+	lst_X.Clear
+	lst_Y.Clear
+End Sub
+
+Public Sub CreateASStepSeekBar_Step (Value As Object, ReachedColor As Int, UnreachedColor As Int) As ASStepSeekBar_Step
 	Dim t1 As ASStepSeekBar_Step
 	t1.Initialize
 	t1.Value = Value
-	t1.Color = Color
+	t1.ReachedColor = ReachedColor
+	t1.UnreachedColor = UnreachedColor
 	Return t1
 End Sub

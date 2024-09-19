@@ -1,0 +1,12 @@
+﻿ModuleBookmarks0=
+ModuleBookmarks1=
+ModuleBookmarks2=
+ModuleBreakpoints0=
+ModuleBreakpoints1=
+ModuleBreakpoints2=
+ModuleClosedNodes0=1,4
+ModuleClosedNodes1=
+ModuleClosedNodes2=1
+NavigationStack=ASStepSeekBar,AddStep,279,0,ASStepSeekBar,getStepIndex,266,0,ASStepSeekBar,Base_Resize,77,0,ASStepSeekBar,Class_Globals,41,0,ASStepSeekBar,TouchPanel_Touch,201,0,ASStepSeekBar,SetValueBasedOnTouch,245,1,ASStepSeekBar,Update,139,6,B4XMainPage,ASStepSeekBar2_ValueChanged,42,0,B4XMainPage,B4XPage_Created,29,3,ASStepSeekBar,AddStep2,298,6
+SelectedBuild=0
+VisibleModules=2,1
